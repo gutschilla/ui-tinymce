@@ -8,6 +8,7 @@ angular.module('ui.tinymce', [])
     var generatedIds = 0;
     return {
       require: 'ngModel',
+      priority: 10, // as of angular 1.2.0 rc3 and above, this is required to insure this link function is applied AFTER, and not overwritten by, that of textarea and ngModel directives
       link: function (scope, elm, attrs, ngModel) {
         var expression, options, tinyInstance,
           updateView = function () {
@@ -73,6 +74,17 @@ angular.module('ui.tinymce', [])
             tinyInstance.setContent(ngModel.$viewValue || '');
           }
         };
+
+        /* ensure instance is removed when scope is */
+        elm.bind("$destroy", function () {
+          if (!tinyInstance) {
+            tinyInstance = tinymce.get(attrs.id);
+          }
+          if (tinyInstance) {
+            tinymce.get(attrs.id).remove()
+          }
+        });
+
       }
     };
   }]);
