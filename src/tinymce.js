@@ -1,5 +1,10 @@
 /**
  * Binds a TinyMCE widget to <textarea> elements.
+ *
+ * merged with: https://github.com/angular-ui/ui-tinymce/pull/50 (setup option does not overwrite entire setup)
+ * merged with: https://github.com/angular-ui/ui-tinymce/pull/53 (destroy instance when element is destroyed)
+ * merged with: https://github.com/tarjei/ui-tinymce/commit/89e80b509de486368078027dbb0e7ee6e9b32c3a (Forward blur event to outer element)
+ * 
  */
 angular.module('ui.tinymce', [])
   .value('uiTinymceConfig', {})
@@ -13,7 +18,7 @@ angular.module('ui.tinymce', [])
         var expression, options, tinyInstance,
           updateView = function () {
             ngModel.$setViewValue(elm.val());
-            if (!scope.$root.$$phase) {
+            if (!scope.$$phase) {
               scope.$apply();
             }
           };
@@ -27,6 +32,13 @@ angular.module('ui.tinymce', [])
         } else {
           expression = {};
         }
+
+        // make config'ed setup method available
+        if (expression.setup) {
+            var configSetup = expression.setup;
+            delete expression.setup;
+        }
+
         options = {
           // Update model when calling setContent (such as from the source editor popup)
           setup: function (ed) {
@@ -51,15 +63,14 @@ angular.module('ui.tinymce', [])
                 updateView();
               }
             });
+            // Forward blur event to outer element
             ed.on('blur', function(e) {
               elm.blur();
               if (!scope.$$phase) { /* unsure if this is needed. */
                 scope.$apply();
               }
-            });
-            if (expression.setup) {
-              scope.$eval(expression.setup);
-              delete expression.setup;
+            });            if (configSetup) {
+              configSetup( ed );
             }
           },
           mode: 'exact',
@@ -81,14 +92,13 @@ angular.module('ui.tinymce', [])
           }
         };
 
-        /* ensure instance is removed when scope is */
-        elm.bind("$destroy", function () {
-          if (!tinyInstance) {
-            tinyInstance = tinymce.get(attrs.id);
-          }
-          if (tinyInstance) {
-            tinymce.get(attrs.id).remove()
-          }
+
+        scope.$on('$destroy', function() {
+            if (!tinyInstance) { tinyInstance = tinymce.get(attrs.id); }
+            if (tinyInstance) {
+              tinyInstance.remove();
+              tinyInstance = null;
+            }
         });
 
       }
